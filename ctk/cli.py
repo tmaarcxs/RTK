@@ -589,31 +589,47 @@ def _get_raw_command(ctk_cmd: str, category: str) -> str:
     This is used to measure actual token savings by running both
     the raw command and the CTK version.
     """
-    # Map CTK commands back to their raw equivalents
-    raw_map = {
-        "ps aux --sort=-%mem | head -20": "ps aux",
-        "free -h": "free",
-        "date '+%Y-%m-%d %H:%M:%S'": "date",
-        "whoami": "whoami",
+    # Commands that are identical (filtering only, no modification)
+    identical_cmds = {
+        "whoami", "hostname", "id", "uname -a",
     }
 
-    # Check for exact match
-    if ctk_cmd in raw_map:
-        return raw_map[ctk_cmd]
+    if ctk_cmd in identical_cmds:
+        return ""  # No savings from command modification, only from filtering
 
-    # Check for partial matches
-    if ctk_cmd.startswith("git log"):
+    # Commands with compact flags
+    compact_map = {
+        "git log --oneline": "git log",
+        "git status -s": "git status",
+        "docker ps --format table": "docker ps",
+        "free -h": "free",
+        "df -h": "df",
+    }
+
+    for ctk, raw in compact_map.items():
+        if ctk_cmd.startswith(ctk):
+            return ctk_cmd.replace(ctk, raw)
+
+    # Partial matches for commands that add compact flags
+    if ctk_cmd.startswith("git log --oneline"):
         return ctk_cmd.replace(" --oneline", "")
-    if ctk_cmd.startswith("docker compose ps"):
-        return ctk_cmd
-    if ctk_cmd.startswith("docker compose logs"):
-        return ctk_cmd
+    if ctk_cmd.startswith("docker compose logs "):
+        return ctk_cmd  # Same command, filtering only
+    if ctk_cmd.startswith("npm "):
+        return ctk_cmd  # Same command, filtering only
+    if ctk_cmd.startswith("pnpm "):
+        return ctk_cmd  # Same command, filtering only
+    if "pytest" in ctk_cmd and "-q" in ctk_cmd:
+        return ctk_cmd.replace(" -q", "").replace(" --tb=short", "")
+    if "tail -5" in ctk_cmd and "ping" in ctk_cmd:
+        # ping with tail gets only summary
+        return ctk_cmd.replace(" 2>&1 | tail -5", "")
 
     return ""  # No raw equivalent - use CTK output as baseline
 
 
 def _filter_output(output: str, category: str) -> str:
-    """Apply basic output filtering based on category."""
+    """Apply aggressive output filtering based on category to maximize token savings."""
     import re
 
     if not output:
@@ -622,26 +638,108 @@ def _filter_output(output: str, category: str) -> str:
     lines = output.split("\n")
     filtered_lines = []
 
+    # Universal skip patterns - boilerplate that wastes tokens
     skip_patterns = [
-        r"^\s*$",
-        r"^=",
-        r"^\s*(Using|Fetching|Downloading|Installing|Building|Compiling)",
-        r"^\s*(created|deleted|modified):",
-        r"^\s*\d+%\s*\|.*\|",
-        r"^\s*[-=]{10,}",
+        r"^\s*$",  # Empty lines
+        r"^=+$",  # Separator lines
+        r"^-+$",  # Separator lines
+        r"^\++$",  # Separator lines
+        r"^\*+$",  # Separator lines
+        r"^~+$",  # Separator lines
+        r"^#+$",  # Separator lines
+        r"^\s*(Using|Fetching|Downloading|Installing|Building|Compiling|Processing|Analyzing|Checking|Validating|Verifying|Resolving|Preparing|Generating|Creating|Updating|Removing|Cleaning|Unpacking|Configuring|Setting up)",
+        r"^\s*(created|deleted|modified|changed|added|removed|updated|copied|moved|renamed):",
+        r"^\s*\d+%\s*\|.*\|",  # Progress bars
+        r"^\s*\d+%\s+complete",  # Progress percentage
+        r"^\s*\[\d+/\d+\]",  # Progress counters
+        r"^\s*WARN\s*:",  # Warnings (usually noise)
+        r"^\s*INFO\s*:",  # Info logs
+        r"^\s*DEBUG\s*:",  # Debug logs
+        r"^\s*TRACE\s*:",  # Trace logs
+        r"^\s*notice\s*:",  # Notice logs
+        r"^\s*verbose\s*:",  # Verbose logs
+        r"^\s*Done in\s+\d+",  # Timing info
+        r"^\s*Completed in\s+\d+",  # Timing info
+        r"^\s*Finished in\s+\d+",  # Timing info
+        r"^\s*Took\s+\d+",  # Timing info
+        r"^\s*Time:\s+\d+",  # Timing info
+        r"^\s*Duration:\s+\d+",  # Timing info
+        r"^\s*real\s+\d+m\d+",  # Time output
+        r"^\s*user\s+\d+m\d+",  # Time output
+        r"^\s*sys\s+\d+m\d+",  # Time output
+        r"^\s*$",  # Empty lines again (catch-all)
+        r"^\s*\.{3,}$",  # Ellipsis lines
+        r"^\s*please wait",  # Waiting messages
+        r"^\s*loading",  # Loading messages
+        r"^\s*spinning up",  # Startup messages
+        r"^\s*starting",  # Startup messages
+        r"^\s*initializing",  # Init messages
+        r"^\s*running",  # Running messages (usually noise)
+        r"^npm warn",  # npm warnings
+        r"^npm notice",  # npm notices
+        r"^yarn warn",  # yarn warnings
+        r"^pnpm warn",  # pnpm warnings
+        r"^warning:",  # Generic warnings
+        r"^deprecation",  # Deprecation warnings
+        r"^deprecated",  # Deprecated warnings
+        r"up to date",  # Already updated messages
+        r"already installed",  # Already installed
+        r"nothing to do",  # Nothing to do
+        r"no changes",  # No changes
+        r"skipping",  # Skipping messages
+        r"^\s*ok$",  # Just "ok"
+        r"^\s*success$",  # Just "success"
+        r"^\s*pass$",  # Just "pass"
+        r"^\s*passed$",  # Just "passed"
+        r"^\s*fail$",  # Just "fail"
+        r"^\s*failed$",  # Just "failed"
+        r"^\s*error:\s*$",  # Empty error lines
+        r"^\s*at\s+",  # Stack trace lines (usually noise in summaries)
     ]
+
+    # Category-specific patterns
+    category_patterns = {
+        "docker": [
+            r"^\s*CONTAINER ID",  # Header (we know the format)
+            r"^\s*IMAGE\s+COMMAND",  # Header
+            r"^\s*NAMESPACE",  # K8s header
+        ],
+        "npm": [
+            r"^\s*up to date",
+            r"^\s*audited",
+            r"^\s*funding",
+            r"^added \d+ packages",
+            r"^removed \d+ packages",
+            r"^changed \d+ packages",
+            r"^\s*packages:",
+        ],
+        "python": [
+            r"^\s*==",
+            r"^\s*---",
+            r"^collected \d+ items",
+            r"^=\d+ passed",
+            r"^=\d+ failed",
+            r"^=\d+ skipped",
+        ],
+        "git": [
+            r"^\s*$",
+        ],
+    }
+
+    # Combine patterns
+    patterns = skip_patterns + category_patterns.get(category, [])
 
     for line in lines:
         skip = False
-        for pattern in skip_patterns:
+        for pattern in patterns:
             if re.match(pattern, line, re.IGNORECASE):
                 skip = True
                 break
         if not skip:
             filtered_lines.append(line)
 
-    if len(filtered_lines) > 200:
-        filtered_lines = filtered_lines[:100] + ["... (truncated)"] + filtered_lines[-100:]
+    # No truncation - keep all useful data
+    # Savings come from removing boilerplate, not cutting results
 
     return "\n".join(filtered_lines)
 
@@ -681,6 +779,181 @@ def curl_command(args: Tuple[str, ...]):
 def wget_command(args: Tuple[str, ...]):
     """Wget with compact output."""
     _run_command("wget -q " + " ".join(args), "network")
+
+
+# ==================== Extended System Commands ====================
+
+@cli.command("df")
+@click.argument("args", nargs=-1)
+def df_command(args: Tuple[str, ...]):
+    """Disk space summary."""
+    _run_command("df -h " + " ".join(args), "system")
+
+
+@cli.command("uname")
+@click.argument("args", nargs=-1)
+def uname_command(args: Tuple[str, ...]):
+    """System info."""
+    _run_command("uname -a", "system")
+
+
+@cli.command("hostname")
+def hostname_command():
+    """Hostname."""
+    _run_command("hostname", "system")
+
+
+@cli.command("uptime")
+def uptime_command():
+    """System uptime."""
+    _run_command("uptime", "system")
+
+
+@cli.command("env")
+@click.argument("args", nargs=-1)
+def env_command(args: Tuple[str, ...]):
+    """Environment variables (filtered)."""
+    if args:
+        _run_command("env | grep -i " + " ".join(args), "system")
+    else:
+        _run_command("env | head -30", "system")
+
+
+@cli.command("which")
+@click.argument("args", nargs=-1)
+def which_command(args: Tuple[str, ...]):
+    """Find command location."""
+    _run_command("which " + " ".join(args), "system")
+
+
+@cli.command("history")
+@click.argument("args", nargs=-1)
+def history_command(args: Tuple[str, ...]):
+    """Command history (limited)."""
+    n = args[0] if args else "20"
+    _run_command(f"history {n} 2>/dev/null || fc -l -{n}", "system")
+
+
+@cli.command("id")
+def id_command():
+    """User/group IDs."""
+    _run_command("id", "system")
+
+
+# ==================== Extended File Commands ====================
+
+@cli.command("tail")
+@click.argument("file", type=click.Path(exists=True))
+@click.option("--lines", "-n", default=20, help="Number of lines")
+def tail_command(file: str, lines: int):
+    """File tail (limited)."""
+    _run_command(f"tail -{lines} {file}", "files")
+
+
+@cli.command("wc")
+@click.argument("args", nargs=-1)
+def wc_command(args: Tuple[str, ...]):
+    """Word/line count."""
+    _run_command("wc " + " ".join(args), "files")
+
+
+@cli.command("stat")
+@click.argument("args", nargs=-1)
+def stat_command(args: Tuple[str, ...]):
+    """File status."""
+    _run_command("stat " + " ".join(args), "files")
+
+
+@cli.command("file")
+@click.argument("args", nargs=-1)
+def file_command(args: Tuple[str, ...]):
+    """File type."""
+    _run_command("file " + " ".join(args), "files")
+
+
+@cli.command("cat")
+@click.argument("file", type=click.Path(exists=True))
+@click.option("--max-lines", "-n", default=100, help="Maximum lines")
+def cat_command(file: str, max_lines: int):
+    """Cat with line limit (alias for read)."""
+    _run_command(f"head -{max_lines} {file}", "files")
+
+
+# ==================== Extended Docker Commands ====================
+
+@docker.command("network")
+@click.argument("args", nargs=-1)
+def docker_network(args: Tuple[str, ...]):
+    """Docker network commands."""
+    _run_command("docker network " + " ".join(args), "docker")
+
+
+@docker.command("volume")
+@click.argument("args", nargs=-1)
+def docker_volume(args: Tuple[str, ...]):
+    """Docker volume commands."""
+    _run_command("docker volume " + " ".join(args), "docker")
+
+
+@docker.command("system")
+@click.argument("args", nargs=-1)
+def docker_system(args: Tuple[str, ...]):
+    """Docker system commands."""
+    _run_command("docker system " + " ".join(args), "docker")
+
+
+# ==================== Extended Git Commands ====================
+
+@git.command("branch")
+@click.argument("args", nargs=-1)
+def git_branch(args: Tuple[str, ...]):
+    """List branches."""
+    _run_command("git branch -a " + " ".join(args), "git")
+
+
+@git.command("remote")
+@click.argument("args", nargs=-1)
+def git_remote(args: Tuple[str, ...]):
+    """Remote info."""
+    _run_command("git remote -v " + " ".join(args), "git")
+
+
+@git.command("stash")
+@click.argument("args", nargs=-1)
+def git_stash(args: Tuple[str, ...]):
+    """Stash operations."""
+    _run_command("git stash list " + " ".join(args), "git")
+
+
+@git.command("tag")
+@click.argument("args", nargs=-1)
+def git_tag(args: Tuple[str, ...]):
+    """Tag list."""
+    _run_command("git tag " + " ".join(args), "git")
+
+
+# ==================== Network Commands ====================
+
+@cli.command("ip")
+@click.argument("args", nargs=-1)
+def ip_command(args: Tuple[str, ...]):
+    """IP/network info."""
+    _run_command("ip " + " ".join(args), "network")
+
+
+@cli.command("ss")
+@click.argument("args", nargs=-1)
+def ss_command(args: Tuple[str, ...]):
+    """Socket stats."""
+    _run_command("ss -tuln " + " ".join(args), "network")
+
+
+@cli.command("ping")
+@click.argument("host")
+@click.option("--count", "-c", default=3, help="Ping count")
+def ping_command(host: str, count: int):
+    """Ping with limited output."""
+    _run_command(f"ping -c {count} {host} 2>&1 | tail -5", "network")
 
 
 # Config command
