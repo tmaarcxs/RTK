@@ -2,32 +2,28 @@
 
 **Token-optimized CLI proxy for Claude Code** - Save 60-90% on dev operations by automatically filtering and compacting command output.
 
-## Features
-
-- **Automatic command rewriting** via Claude Code hooks
-- **Docker Compose support** (160+ uses identified as critical)
-- **System commands**: `ps aux`, `free`, `date`, `whoami`
-- **Git commands**: `status`, `diff`, `log`, etc.
-- **File operations**: `ls`, `tree`, `grep`, `find`, `du`
-- **All major tooling**: npm, pnpm, pytest, cargo, go, kubectl, gh CLI
-- **Metrics tracking**: Token savings analytics with export
-
 ## Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/YOUR_USERNAME/ctk.git
-cd ctk
+### As a Claude Code Plugin (Recommended)
 
-# Run the installer
-./bin/install-ctk.sh
+```bash
+# Install directly from GitHub
+claude plugin install https://github.com/tmaarcxs/RTK.git
 ```
 
-The installer will:
-1. Install Python dependencies (click, rich, pyyaml)
-2. Create the CTK binary at `~/.local/bin/ctk`
-3. Install the Claude Code hook at `~/.claude/hooks/ctk-rewrite.sh`
-4. Update Claude Code settings to use the hook
+That's it! The plugin will:
+- Auto-install on first session start
+- Register the command rewriting hook
+- Work transparently for all supported commands
+
+### Manual Installation
+
+```bash
+# Clone and run installer
+git clone https://github.com/tmaarcxs/RTK.git
+cd RTK
+./bin/install-ctk.sh
+```
 
 ## Usage
 
@@ -42,47 +38,55 @@ ctk discover          # Analyze Claude Code history for missed opportunities
 ctk proxy <cmd>       # Execute raw command without filtering (for debugging)
 ```
 
-### Hook-Based Usage
+### Automatic Command Rewriting
 
-All other commands are automatically rewritten by the Claude Code hook.
+All supported commands are automatically rewritten by the hook:
 
-Example: `git status` -> `ctk git status` (transparent, 0 tokens overhead)
+| Raw Command | Rewritten To |
+|-------------|--------------|
+| `git status` | `ctk git status` |
+| `docker compose ps` | `ctk docker compose ps` |
+| `ps aux` | `ctk ps` |
+| `npm test` | `ctk npm test` |
 
-The hook automatically rewrites these commands:
+## Supported Commands
 
 | Category | Commands |
 |----------|----------|
-| **Docker** | `docker compose ps/logs/up/down/exec`, `docker ps/images/logs` |
-| **Git** | `status`, `diff`, `log`, `add`, `commit`, `push`, `pull` |
-| **System** | `ps aux`, `free`, `date`, `whoami` |
-| **Files** | `ls`, `tree`, `cat`->`read`, `grep`, `find`, `du` |
+| **Docker** | `compose ps/logs/up/down/exec`, `ps`, `images`, `logs`, `network`, `volume`, `system` |
+| **Git** | `status`, `diff`, `log`, `add`, `commit`, `push`, `pull`, `branch`, `remote`, `stash`, `tag` |
+| **System** | `ps aux`, `free`, `df`, `date`, `whoami`, `uname`, `hostname`, `uptime`, `env`, `which`, `history`, `id` |
+| **Files** | `ls`, `tree`, `cat`→`read`, `grep`, `find`, `du`, `tail`, `wc`, `stat`, `file` |
 | **Python** | `pytest`, `ruff`, `pip` |
-| **Node.js** | `npm`, `pnpm`, `vitest`, `tsc`, `eslint`->`lint`, `prettier` |
+| **Node.js** | `npm`, `pnpm`, `vitest`, `tsc`, `eslint`→`lint`, `prettier` |
 | **Rust** | `cargo test/build/clippy/check` |
 | **Go** | `go test/build/vet`, `golangci-lint` |
 | **Kubernetes** | `kubectl get/logs/describe` |
 | **GitHub** | `gh pr/issue/run/api/release` |
-| **Network** | `curl`, `wget` |
+| **Network** | `curl`, `wget`, `ip`, `ss`, `ping` |
 
 ## How It Works
 
 1. **Hook intercepts Bash commands** before execution
 2. **Rewrites commands** to use CTK (e.g., `docker compose ps` -> `ctk docker compose ps`)
-3. **CTK runs the command** and filters the output
+3. **CTK runs the command** and filters output (removes boilerplate, progress bars, noise)
 4. **Token savings are tracked** in SQLite database
 
 ## Token Savings
 
 CTK saves tokens by:
 
-1. **Pre-truncation**: Commands like `ps aux` are limited to top 20 processes
-2. **Filtering**: Removes empty lines, progress bars, boilerplate
-3. **Compact formats**: Git uses `--oneline`, docker uses table format
-4. **Smart defaults**: All commands optimized for minimal output
+1. **Filtering boilerplate**: Removes progress bars, timing info, warnings, deprecation notices
+2. **Category-specific patterns**: Docker headers, npm noise, pytest separators
+3. **No truncation of useful data**: Savings come from removing noise, not cutting results
+
+Example savings:
+- `docker logs`: ~2,440 tokens (39%)
+- `ps aux`: ~4,531 tokens (10%)
 
 ## Configuration
 
-Configuration file: `~/.config/ctk/config.yaml`
+Config file: `~/.config/ctk/config.yaml`
 
 ```yaml
 version: 1
@@ -93,13 +97,6 @@ commands:
     compose: true
   git:
     enabled: true
-  # ... etc
-display:
-  color: true
-  compact: true
-  max_lines: 100
-metrics:
-  enabled: true
 ```
 
 ## Data Storage
@@ -107,20 +104,11 @@ metrics:
 - **Metrics database**: `~/.local/share/ctk/metrics.db` (SQLite)
 - **Configuration**: `~/.config/ctk/config.yaml`
 - **Binary**: `~/.local/bin/ctk`
-- **Hook**: `~/.claude/hooks/ctk-rewrite.sh`
-
-## Migrating from RTK
-
-The installer automatically:
-1. Removes the old RTK hook from Claude Code settings
-2. Optionally migrates RTK history to CTK metrics database
 
 ## Requirements
 
 - Python 3.8+
-- click
-- rich
-- pyyaml
+- click, rich, pyyaml (auto-installed)
 - jq (for the hook script)
 
 ## License
