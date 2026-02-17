@@ -1,0 +1,4 @@
+#!/bin/bash
+# CTK executable wrapper - runs the Python module
+export PYTHONPATH="$HOME/.local/lib/ctk:$PYTHONPATH"
+exec python3 -m ctk "$@"
