@@ -1,12 +1,13 @@
 """Metrics database for tracking token savings."""
 
+from __future__ import annotations
+
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .config import get_config
-
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS executions (
@@ -30,7 +31,7 @@ CREATE INDEX IF NOT EXISTS idx_category ON executions(category);
 class MetricsDB:
     """SQLite database for tracking CTK metrics."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         self.db_path = db_path or get_config().database_path
         self._ensure_db()
 
@@ -43,7 +44,7 @@ class MetricsDB:
     def record(
         self,
         original_command: str,
-        rewritten_command: Optional[str],
+        rewritten_command: str | None,
         category: str,
         exec_time_ms: int = 0,
         original_tokens: int = 0,
@@ -73,13 +74,13 @@ class MetricsDB:
             )
             return cursor.lastrowid or 0
 
-    def get_summary(self, days: int = 0) -> Dict[str, Any]:
+    def get_summary(self, days: int = 0) -> dict[str, Any]:
         """Get summary statistics."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
 
             where = ""
-            params: List[Any] = []
+            params: list[Any] = []
             if days > 0:
                 where = "WHERE timestamp >= datetime('now', ?)"
                 params = [f"-{days} days"]
@@ -90,7 +91,11 @@ class MetricsDB:
                     COUNT(*) as total_commands,
                     SUM(tokens_saved) as total_saved,
                     AVG(savings_percent) as avg_savings,
-                    SUM(CASE WHEN rewritten_command IS NOT NULL THEN 1 ELSE 0 END) as rewritten_count
+                    SUM(CASE WHEN rewritten_command IS NOT NULL THEN 1 ELSE 0 END) as rewritten_count,
+                    SUM(original_tokens) as total_original_tokens,
+                    SUM(filtered_tokens) as total_filtered_tokens,
+                    MAX(tokens_saved) as max_saved,
+                    MIN(tokens_saved) as min_saved
                 FROM executions
                 {where}
                 """,
@@ -102,17 +107,21 @@ class MetricsDB:
                 "total_tokens_saved": row["total_saved"] or 0,
                 "avg_savings_percent": round(row["avg_savings"] or 0, 1),
                 "rewritten_commands": row["rewritten_count"] or 0,
+                "total_original_tokens": row["total_original_tokens"] or 0,
+                "total_filtered_tokens": row["total_filtered_tokens"] or 0,
+                "max_tokens_saved": row["max_saved"] or 0,
+                "min_tokens_saved": row["min_saved"] or 0,
             }
 
     def get_history(
-        self, limit: int = 50, category: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, limit: int = 50, category: str | None = None
+    ) -> list[dict[str, Any]]:
         """Get command history."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
 
             where = ""
-            params: List[Any] = []
+            params: list[Any] = []
             if category:
                 where = "WHERE category = ?"
                 params = [category]
@@ -129,13 +138,75 @@ class MetricsDB:
 
             return [dict(row) for row in rows]
 
-    def get_by_category(self, days: int = 0) -> Dict[str, Dict[str, Any]]:
+    def get_top_commands(self, days: int = 0, limit: int = 10) -> list[dict[str, Any]]:
+        """Get top commands by usage frequency and tokens saved."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+
+            where = ""
+            params: list[Any] = []
+            if days > 0:
+                where = "WHERE timestamp >= datetime('now', ?)"
+                params = [f"-{days} days"]
+
+            rows = conn.execute(
+                f"""
+                SELECT
+                    original_command,
+                    COUNT(*) as count,
+                    SUM(tokens_saved) as tokens_saved,
+                    AVG(savings_percent) as avg_savings,
+                    SUM(original_tokens) as original_tokens,
+                    SUM(filtered_tokens) as filtered_tokens
+                FROM executions
+                {where}
+                GROUP BY original_command
+                ORDER BY count DESC
+                LIMIT ?
+                """,
+                params + [limit],
+            ).fetchall()
+
+            return [dict(row) for row in rows]
+
+    def get_top_savers(self, days: int = 0, limit: int = 10) -> list[dict[str, Any]]:
+        """Get commands with highest token savings."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+
+            where = ""
+            params: list[Any] = []
+            if days > 0:
+                where = "WHERE timestamp >= datetime('now', ?)"
+                params = [f"-{days} days"]
+
+            rows = conn.execute(
+                f"""
+                SELECT
+                    original_command,
+                    COUNT(*) as count,
+                    SUM(tokens_saved) as tokens_saved,
+                    AVG(savings_percent) as avg_savings,
+                    SUM(original_tokens) as original_tokens,
+                    SUM(filtered_tokens) as filtered_tokens
+                FROM executions
+                {where}
+                GROUP BY original_command
+                ORDER BY tokens_saved DESC
+                LIMIT ?
+                """,
+                params + [limit],
+            ).fetchall()
+
+            return [dict(row) for row in rows]
+
+    def get_by_category(self, days: int = 0) -> dict[str, dict[str, Any]]:
         """Get statistics grouped by category."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
 
             where = ""
-            params: List[Any] = []
+            params: list[Any] = []
             if days > 0:
                 where = "WHERE timestamp >= datetime('now', ?)"
                 params = [f"-{days} days"]
@@ -146,7 +217,9 @@ class MetricsDB:
                     category,
                     COUNT(*) as count,
                     SUM(tokens_saved) as tokens_saved,
-                    AVG(savings_percent) as avg_savings
+                    AVG(savings_percent) as avg_savings,
+                    SUM(original_tokens) as original_tokens,
+                    SUM(filtered_tokens) as filtered_tokens
                 FROM executions
                 {where}
                 GROUP BY category
@@ -160,11 +233,13 @@ class MetricsDB:
                     "count": row["count"],
                     "tokens_saved": row["tokens_saved"] or 0,
                     "avg_savings_percent": round(row["avg_savings"] or 0, 1),
+                    "original_tokens": row["original_tokens"] or 0,
+                    "filtered_tokens": row["filtered_tokens"] or 0,
                 }
                 for row in rows
             }
 
-    def get_daily_stats(self, days: int = 7) -> List[Dict[str, Any]]:
+    def get_daily_stats(self, days: int = 7) -> list[dict[str, Any]]:
         """Get daily statistics."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
@@ -186,7 +261,7 @@ class MetricsDB:
 
             return [dict(row) for row in rows]
 
-    def export(self, format: str = "json", output_path: Optional[Path] = None) -> str:
+    def export(self, format: str = "json", output_path: Path | None = None) -> str:
         """Export metrics to JSON or CSV."""
         history = self.get_history(limit=10000)
 
@@ -251,7 +326,7 @@ class MetricsDB:
 
 
 # Global instance
-_metrics: Optional[MetricsDB] = None
+_metrics: MetricsDB | None = None
 
 
 def get_metrics() -> MetricsDB:

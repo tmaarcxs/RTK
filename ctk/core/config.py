@@ -1,10 +1,11 @@
 """Configuration management for CTK."""
 
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import yaml
-
 
 DEFAULT_CONFIG = {
     "version": 1,
@@ -35,10 +36,10 @@ DEFAULT_CONFIG = {
 class Config:
     """Configuration manager for CTK."""
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         self.config_dir = Path.home() / ".config" / "ctk"
         self.config_path = config_path or (self.config_dir / "config.yaml")
-        self._config: Dict[str, Any] = {}
+        self._config: dict[str, Any] = {}
         self.load()
 
     @property
@@ -54,7 +55,7 @@ class Config:
             return Path(db_path)
         return self.data_dir / "metrics.db"
 
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         """Load configuration from file."""
         if self.config_path.exists():
             with open(self.config_path) as f:
@@ -100,7 +101,7 @@ class Config:
             self.get(f"commands.{category}.{command}", True)
         )
 
-    def _merge(self, base: Dict, override: Dict) -> Dict:
+    def _merge(self, base: dict, override: dict) -> dict:
         """Recursively merge two dictionaries."""
         result = base.copy()
         for key, value in override.items():
@@ -112,7 +113,7 @@ class Config:
 
 
 # Global config instance
-_config: Optional[Config] = None
+_config: Config | None = None
 
 
 def get_config() -> Config:
