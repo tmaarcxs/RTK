@@ -134,28 +134,16 @@ def _show_summary(metrics: MetricsDB, days: int = 0, top: int = 10):
     saved = summary["total_tokens_saved"]
     pct = summary["avg_savings_percent"]
 
-    # Visual bar for savings
-    if orig > 0:
-        bar_len = 30
-        saved_ratio = min(saved / orig, 1.0) if orig > 0 else 0
-        saved_bar = int(bar_len * saved_ratio)
-        bar_visual = (
-            "[green]" + "█" * saved_bar + "[/green]" + "░" * (bar_len - saved_bar)
-        )
-    else:
-        bar_visual = "░" * 30
-
     console.print(f"  Tokens before: [yellow]{orig:,}[/yellow]")
     console.print(f"  Tokens after:  [cyan]{filt:,}[/cyan]")
     console.print(f"  Tokens saved:  [green]{saved:,}[/green] ({pct}%)")
-    console.print(f"  Savings bar:   {bar_visual}")
 
     if summary["max_tokens_saved"] > 0:
         console.print(
             f"\n  Max saved (single cmd): [green]{summary['max_tokens_saved']:,}[/green]"
         )
 
-    # By category with visual bars
+    # By category
     if by_category:
         console.print("\n[bold]By Category[/bold]")
         table = Table(show_header=True, header_style="bold")
@@ -165,22 +153,10 @@ def _show_summary(metrics: MetricsDB, days: int = 0, top: int = 10):
         table.add_column("After", justify="right")
         table.add_column("Saved", justify="right")
         table.add_column("%", justify="right")
-        table.add_column("Visual", justify="left")
-
-        max_saved = (
-            max((s["tokens_saved"] for s in by_category.values()), default=0) or 1
-        )
 
         for cat, stats in sorted(
             by_category.items(), key=lambda x: x[1]["tokens_saved"], reverse=True
         ):
-            bar_len = 15
-            saved_ratio = stats["tokens_saved"] / max_saved if max_saved > 0 else 0
-            saved_bar = int(bar_len * saved_ratio)
-            bar_visual = (
-                "[green]" + "█" * saved_bar + "[/green]" + "░" * (bar_len - saved_bar)
-            )
-
             table.add_row(
                 cat,
                 str(stats["count"]),
@@ -188,7 +164,6 @@ def _show_summary(metrics: MetricsDB, days: int = 0, top: int = 10):
                 f"{stats.get('filtered_tokens', 0):,}",
                 f"[green]{stats['tokens_saved']:,}[/green]",
                 f"{stats['avg_savings_percent']}%",
-                bar_visual,
             )
 
         console.print(table)
