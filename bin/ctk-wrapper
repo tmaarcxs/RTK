@@ -1,4 +1,5 @@
 #!/bin/bash
 # CTK executable wrapper - runs the Python module
-export PYTHONPATH="$HOME/.local/lib/ctk:$PYTHONPATH"
+# Note: pip install -e creates a proper entry point at /usr/local/bin/ctk
+# This wrapper is only needed for manual installation scenarios
 exec python3 -m ctk "$@"
