@@ -8,7 +8,7 @@
 
 ```bash
 # Install directly from GitHub
-claude plugin install https://github.com/tmaarcxs/RTK.git
+claude plugin install https://github.com/tmaarcxs/CTK.git
 ```
 
 That's it! The plugin will:
@@ -20,8 +20,8 @@ That's it! The plugin will:
 
 ```bash
 # Clone and run installer
-git clone https://github.com/tmaarcxs/RTK.git
-cd RTK
+git clone https://github.com/tmaarcxs/CTK.git
+cd CTK
 ./bin/install-ctk.sh
 ```
 
