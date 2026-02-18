@@ -48,6 +48,9 @@ COMMAND_REGISTRY = {
     ("docker.compose", "up"): ("docker compose up ", "docker-compose"),
     ("docker.compose", "down"): ("docker compose down ", "docker-compose"),
     ("docker.compose", "exec"): ("docker compose exec ", "docker-compose"),
+    ("docker.compose", "build"): ("docker compose build ", "docker-compose"),
+    ("docker.compose", "restart"): ("docker compose restart ", "docker-compose"),
+    ("docker.compose", "stop"): ("docker compose stop ", "docker-compose"),
     # Git commands
     ("git", "status"): ("git status ", "git"),
     ("git", "diff"): ("git diff ", "git-diff"),
@@ -60,6 +63,8 @@ COMMAND_REGISTRY = {
     ("git", "remote"): ("git remote -v ", "git"),
     ("git", "stash"): ("git stash list ", "git"),
     ("git", "tag"): ("git tag ", "git"),
+    ("git", "show"): ("git show --stat ", "git-log"),
+    ("git", "fetch"): ("git fetch ", "git"),
     # File commands
     ("", "ls"): ("ls ", "files"),
     ("", "tree"): ("tree ", "files"),
