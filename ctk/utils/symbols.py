@@ -3,6 +3,8 @@
 import re
 from typing import Any
 
+from ctk.utils.helpers import compact_duration
+
 # =============================================================================
 # Git Status Symbols
 # =============================================================================
@@ -284,16 +286,9 @@ def symbolize_docker_state(state_raw: str) -> str:
     # Get symbol
     symbol = DOCKER_STATE_SYMBOLS.get(state, state[0])
 
-    # Compact duration
+    # Compact duration using shared helper
     if duration:
-        duration = re.sub(r"(\d+)\s*hours?", r"\1h", duration, flags=re.IGNORECASE)
-        duration = re.sub(r"(\d+)\s*days?", r"\1d", duration, flags=re.IGNORECASE)
-        duration = re.sub(r"(\d+)\s*minutes?", r"\1m", duration, flags=re.IGNORECASE)
-        duration = re.sub(r"(\d+)\s*seconds?", r"\1s", duration, flags=re.IGNORECASE)
-        duration = re.sub(r"(\d+)\s*weeks?", r"\1w", duration, flags=re.IGNORECASE)
-        duration = re.sub(r"\s*\(.*\)", "", duration)  # Remove exit codes/health
-        duration = re.sub(r"\s*ago\s*", "", duration)
-        duration = duration.strip()
+        duration = compact_duration(duration)
         return f"{symbol}{duration}"
 
     return symbol

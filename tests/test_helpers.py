@@ -51,3 +51,29 @@ class TestCompactDuration:
     def test_case_insensitive(self):
         assert compact_duration("2 HOURS") == "2h"
         assert compact_duration("3 DAYS") == "3d"
+
+
+class TestSymbolizeDockerStateUsesHelper:
+    """Verify symbolize_docker_state uses compact_duration helper."""
+
+    def test_uses_compact_duration(self):
+        from ctk.utils.symbols import symbolize_docker_state
+
+        # These should work the same as compact_duration
+        assert "2h" in symbolize_docker_state("Up 2 hours")
+        assert "3d" in symbolize_docker_state("Up 3 days")
+
+    def test_removes_parenthetical(self):
+        from ctk.utils.symbols import symbolize_docker_state
+
+        # Exited with exit code should be compacted
+        result = symbolize_docker_state("Exited (0) 3 days ago")
+        assert "3d" in result
+        assert "(0)" not in result
+
+    def test_exited_state(self):
+        from ctk.utils.symbols import symbolize_docker_state
+
+        result = symbolize_docker_state("Exited (1) 2 hours ago")
+        assert result.startswith("X")
+        assert "2h" in result
