@@ -25,6 +25,89 @@ CONTEXT_SETTINGS = {
     "allow_interspersed_args": True,
 }
 
+# Command registry - single source of truth for proxy commands
+# Format: (group, command): (cmd_template, category)
+COMMAND_REGISTRY = {
+    # Docker commands
+    ("docker", "ps"): ("docker ps ", "docker"),
+    ("docker", "images"): ("docker images ", "docker"),
+    ("docker", "logs"): ("docker logs ", "docker"),
+    ("docker", "exec"): ("docker exec ", "docker"),
+    ("docker", "run"): ("docker run ", "docker"),
+    ("docker", "build"): ("docker build ", "docker"),
+    ("docker", "network"): ("docker network ", "docker"),
+    ("docker", "volume"): ("docker volume ", "docker"),
+    ("docker", "system"): ("docker system ", "docker"),
+    # Docker Compose commands
+    ("docker-compose", "ps"): ("docker compose ps ", "docker-compose"),
+    ("docker-compose", "logs"): ("docker compose logs ", "docker-compose"),
+    ("docker-compose", "up"): ("docker compose up ", "docker-compose"),
+    ("docker-compose", "down"): ("docker compose down ", "docker-compose"),
+    ("docker-compose", "exec"): ("docker compose exec ", "docker-compose"),
+    # Git commands
+    ("git", "status"): ("git status ", "git"),
+    ("git", "diff"): ("git diff ", "git"),
+    ("git", "log"): ("git log --oneline ", "git"),
+    ("git", "add"): ("git add ", "git"),
+    ("git", "commit"): ("git commit ", "git"),
+    ("git", "push"): ("git push ", "git"),
+    ("git", "pull"): ("git pull ", "git"),
+    ("git", "branch"): ("git branch -a ", "git"),
+    ("git", "remote"): ("git remote -v ", "git"),
+    ("git", "stash"): ("git stash list ", "git"),
+    ("git", "tag"): ("git tag ", "git"),
+    # File commands
+    ("", "ls"): ("ls ", "files"),
+    ("", "tree"): ("tree ", "files"),
+    ("", "grep"): ("grep ", "files"),
+    ("", "find"): ("find ", "files"),
+    ("", "du"): ("du ", "files"),
+    ("", "wc"): ("wc ", "files"),
+    ("", "stat"): ("stat ", "files"),
+    ("", "file"): ("file ", "files"),
+    ("", "sed"): ("sed ", "files"),
+    ("", "jq"): ("jq ", "files"),
+    # Python commands
+    ("", "pytest"): ("pytest  -q --tb=short 2>&1", "python"),
+    ("", "ruff"): ("ruff ", "python"),
+    ("", "pip"): ("pip ", "python"),
+    # Node.js commands
+    ("", "npm"): ("npm ", "nodejs"),
+    ("", "pnpm"): ("pnpm ", "nodejs"),
+    ("", "vitest"): ("npx vitest run --reporter=verbose 2>&1", "nodejs"),
+    ("", "tsc"): ("npx tsc --pretty 2>&1", "nodejs"),
+    ("", "lint"): ("npx eslint --format compact 2>&1", "nodejs"),
+    ("", "prettier"): ("npx prettier ", "nodejs"),
+    # Network commands
+    ("", "curl"): ("curl -s ", "network"),
+    ("", "wget"): ("wget -q ", "network"),
+    ("", "ip"): ("ip ", "network"),
+    ("", "ss"): ("ss -tuln ", "network"),
+    ("", "gh"): ("gh ", "gh"),
+    # System commands
+    ("", "ps"): ("ps aux --sort=-%mem | head -20", "system"),
+    ("", "free"): ("free -h", "system"),
+    ("", "df"): ("df -h ", "system"),
+    ("", "uname"): ("uname -a", "system"),
+    ("", "env"): ("env | head -30", "system"),
+    ("", "which"): ("which ", "system"),
+    ("", "id"): ("id", "system"),
+    ("", "pwd"): ("pwd", "system"),
+    ("", "hostname"): ("hostname", "system"),
+    ("", "uptime"): ("uptime", "system"),
+    ("", "apt"): ("apt ", "system"),
+    ("", "sqlite3"): ("sqlite3 ", "system"),
+}
+
+
+def _make_proxy_handler(cmd_template: str, category: str):
+    """Factory function to create proxy command handlers."""
+
+    def handler(args: tuple[str, ...] = ()):
+        _run_command(cmd_template + " ".join(args), category)
+
+    return handler
+
 
 class ProxyVersionGroup(click.Group):
     """Custom Group that handles --version for CTK while passing it through to subcommands."""

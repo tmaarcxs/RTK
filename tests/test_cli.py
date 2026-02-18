@@ -514,3 +514,30 @@ class TestFlagPassthrough:
         assert "-T" in call_args
         assert "-e" in call_args
         assert "VAR=value" in call_args
+
+
+class TestCommandRegistry:
+    """Tests for command registry pattern."""
+
+    def test_registry_has_docker_commands(self):
+        from ctk.cli import COMMAND_REGISTRY
+
+        docker_commands = [(g, c) for (g, c) in COMMAND_REGISTRY.keys() if g == "docker"]
+        assert ("docker", "ps") in docker_commands
+        assert ("docker", "images") in docker_commands
+        assert ("docker", "logs") in docker_commands
+
+    def test_registry_has_git_commands(self):
+        from ctk.cli import COMMAND_REGISTRY
+
+        git_commands = [(g, c) for (g, c) in COMMAND_REGISTRY.keys() if g == "git"]
+        assert ("git", "status") in git_commands
+        assert ("git", "log") in git_commands
+        assert ("git", "diff") in git_commands
+
+    def test_registry_has_ungrouped_commands(self):
+        from ctk.cli import COMMAND_REGISTRY
+
+        ungrouped = [(g, c) for (g, c) in COMMAND_REGISTRY.keys() if g == ""]
+        assert ("", "npm") in ungrouped
+        assert ("", "pip") in ungrouped
