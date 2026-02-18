@@ -931,6 +931,92 @@ def _compress_network_output(lines: list[str]) -> list[str]:
     return [line.rstrip() for line in lines if line.strip()][:20]
 
 
+def compress_alembic_output(lines: list[str]) -> list[str]:
+    """Compress alembic migration output to minimal format.
+
+    Converts:
+        INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+        INFO  [alembic.runtime.migration] Will assume transactional DDL.
+        INFO  [alembic.runtime.migration] Running upgrade 1a2b3c4d -> 5e6f7g8h, add_users_table
+
+    To:
+        1a2b3c4d -> 5e6f7g8h: add_users_table
+    """
+    result = []
+
+    for line in lines:
+        line_stripped = line.strip()
+        if not line_stripped:
+            continue
+
+        # Skip INFO boilerplate
+        if re.match(r"INFO\s+\[alembic\.(runtime|ddl)", line_stripped):
+            # Extract migration info
+            match = re.search(
+                r"Running (upgrade|downgrade)\s+([a-f0-9]+)?\s*->\s*([a-f0-9]+),?\s*(.+)?$",
+                line_stripped,
+            )
+            if match:
+                from_rev = match.group(2) or "head"
+                to_rev = match.group(3)[:7]
+                msg = match.group(4) or ""
+                if msg:
+                    msg = msg.strip()[:40]
+                result.append(f"{from_rev[:7]} -> {to_rev}: {msg}")
+            continue
+
+        # Keep error lines
+        if re.match(r"^(Error|error|ERROR)", line_stripped):
+            result.append(line_stripped)
+            continue
+
+        # Keep warning lines
+        if re.match(r"^(Warning|warning|WARNING)", line_stripped):
+            result.append(line_stripped[:80])
+            continue
+
+    return result if result else ["alembic: completed"]
+
+
+def compress_uvicorn_output(lines: list[str]) -> list[str]:
+    """Compress uvicorn/fastapi server output.
+
+    Converts:
+        INFO:     Started server process [12345]
+        INFO:     Waiting for application startup.
+        INFO:     Application startup complete.
+        INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+
+    To:
+        uvicorn: http://0.0.0.0:8000
+    """
+    result = []
+    url = None
+
+    for line in lines:
+        line_stripped = line.strip()
+        if not line_stripped:
+            continue
+
+        # Extract URL
+        match = re.search(r"running on (https?://[^\s]+)", line_stripped, re.IGNORECASE)
+        if match:
+            url = match.group(1)
+
+        # Skip INFO boilerplate
+        if re.match(r"INFO:\s+(Started|Waiting|Application|Uvicorn)", line_stripped):
+            continue
+
+        # Keep error lines
+        if re.match(r"^(Error|error|ERROR|WARNING)", line_stripped):
+            result.append(line_stripped[:80])
+
+    if url:
+        result.insert(0, f"uvicorn: {url}")
+
+    return result if result else ["uvicorn: started"]
+
+
 # Compressor registry
 _COMPRESSORS = {
     "git": compress_git_status,
@@ -941,6 +1027,8 @@ _COMPRESSORS = {
     "nodejs": compress_nodejs_output,
     "files": _compress_files_output,
     "network": _compress_network_output,
+    "alembic": compress_alembic_output,
+    "uvicorn": compress_uvicorn_output,
 }
 
 

@@ -50,8 +50,8 @@ COMMAND_REGISTRY = {
     ("docker.compose", "exec"): ("docker compose exec ", "docker-compose"),
     # Git commands
     ("git", "status"): ("git status ", "git"),
-    ("git", "diff"): ("git diff ", "git"),
-    ("git", "log"): ("git log --oneline ", "git"),
+    ("git", "diff"): ("git diff ", "git-diff"),
+    ("git", "log"): ("git log --oneline ", "git-log"),
     ("git", "add"): ("git add ", "git"),
     ("git", "commit"): ("git commit ", "git"),
     ("git", "push"): ("git push ", "git"),
@@ -102,6 +102,8 @@ COMMAND_REGISTRY = {
     ("", "uptime"): ("uptime", "system"),
     ("", "apt"): ("apt ", "system"),
     ("", "sqlite3"): ("sqlite3 ", "system"),
+    ("", "alembic"): ("alembic ", "alembic"),
+    ("", "uvicorn"): ("uvicorn ", "uvicorn"),
 }
 
 

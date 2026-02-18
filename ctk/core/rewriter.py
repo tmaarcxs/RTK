@@ -245,6 +245,22 @@ _register_category(
     ],
 )
 
+_register_category(
+    "alembic",
+    [
+        (r"^alembic\s+", "alembic"),
+        (r"^python\s+-m\s+alembic", "alembic"),
+    ],
+)
+
+_register_category(
+    "uvicorn",
+    [
+        (r"^uvicorn\s+", "uvicorn"),
+        (r"^python\s+-m\s+uvicorn", "uvicorn"),
+    ],
+)
+
 
 def extract_prefix(cmd: str) -> tuple[str, str]:
     """Extract environment variable prefix and sudo prefix from command.
