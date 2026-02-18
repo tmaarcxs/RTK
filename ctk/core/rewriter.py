@@ -245,15 +245,6 @@ _register_category(
     ],
 )
 
-# Legacy dict for backward compatibility
-COMMAND_PATTERNS = {
-    name: {
-        "patterns": [(p.pattern, label) for p, label in cat.patterns],
-        "subcommands": cat.subcommands,
-    }
-    for name, cat in COMMAND_CATEGORIES.items()
-}
-
 
 def extract_prefix(cmd: str) -> tuple[str, str]:
     """Extract environment variable prefix and sudo prefix from command.

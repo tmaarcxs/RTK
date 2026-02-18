@@ -12,7 +12,7 @@ from rich.table import Table
 
 from .core.config import get_config
 from .core.metrics import MetricsDB, get_metrics
-from .core.rewriter import COMMAND_PATTERNS, should_rewrite_command
+from .core.rewriter import COMMAND_CATEGORIES, should_rewrite_command
 from .utils.filters import filter_output
 from .utils.tokenizer import calculate_savings
 
@@ -468,8 +468,8 @@ def _analyze_history_dir(base_path: Path, show_all: bool):
                         data = json.loads(line)
                         if data.get("type") == "human":
                             msg = data.get("message", "")
-                            for category, config in COMMAND_PATTERNS.items():
-                                for pattern, _ in config["patterns"]:
+                            for category, cat_config in COMMAND_CATEGORIES.items():
+                                for pattern, _ in cat_config.patterns:
                                     import re
 
                                     if re.search(pattern, msg):
@@ -545,7 +545,7 @@ def _run_command(cmd: str, category: str):
     exec_time = int((time.time() - start) * 1000)
 
     output = result.stdout + result.stderr
-    filtered = _filter_output(output, category)
+    filtered = filter_output(output, category)
 
     # Calculate savings: compare raw output vs CTK filtered output
     if raw_output:
@@ -616,10 +616,6 @@ def _get_raw_command(ctk_cmd: str, category: str) -> str:
         return ctk_cmd.replace(" 2>&1 | tail -5", "")
 
     return ""  # No raw equivalent - use CTK output as baseline
-
-
-# Alias for backward compatibility with tests
-_filter_output = filter_output
 
 
 # ==================== Custom Commands (with special options) ====================
