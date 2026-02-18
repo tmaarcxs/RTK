@@ -59,10 +59,6 @@ All supported commands are automatically rewritten by the hook:
 | **Files** | `ls`, `tree`, `cat`→`read`, `grep`, `find`, `du`, `tail`, `wc`, `stat`, `file` |
 | **Python** | `pytest`, `ruff`, `pip` |
 | **Node.js** | `npm`, `pnpm`, `vitest`, `tsc`, `eslint`→`lint`, `prettier` |
-| **Rust** | `cargo test/build/clippy/check` |
-| **Go** | `go test/build/vet`, `golangci-lint` |
-| **Kubernetes** | `kubectl get/logs/describe` |
-| **GitHub** | `gh pr/issue/run/api/release` |
 | **Network** | `curl`, `wget`, `ip`, `ss`, `ping` |
 
 ## How It Works

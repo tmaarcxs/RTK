@@ -188,7 +188,7 @@ class TestProxyCommand:
 
 
 class TestCommandGroups:
-    """Tests for command groups (docker, git, kubectl)."""
+    """Tests for command groups (docker, git, etc.)."""
 
     @pytest.fixture
     def runner(self):

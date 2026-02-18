@@ -1,12 +1,12 @@
 {
   "name": "ctk",
-  "description": "Claude Token Killer - Token-optimized CLI proxy that automatically rewrites commands to save 60-90% tokens. Covers docker, git, kubectl, npm, pytest, cargo, and more.",
-  "version": "1.1.2",
+  "description": "Claude Token Killer - Token-optimized CLI proxy that automatically rewrites commands to save 60-90% tokens. Covers docker, git, npm, pytest, and more.",
+  "version": "1.2.0",
   "author": {
     "name": "tmaarcxs"
   },
   "homepage": "https://github.com/tmaarcxs/RTK",
   "repository": "https://github.com/tmaarcxs/RTK",
   "license": "MIT",
-  "keywords": ["tokens", "optimization", "cli", "proxy", "docker", "git", "kubectl"]
+  "keywords": ["tokens", "optimization", "cli", "proxy", "docker", "git"]
 }

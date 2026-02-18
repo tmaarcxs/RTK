@@ -70,19 +70,6 @@ if echo "$MATCH_CMD" | grep -qE '^docker[[:space:]]'; then
     esac
   fi
 
-# --- Kubernetes ---
-elif echo "$MATCH_CMD" | grep -qE '^kubectl[[:space:]]'; then
-  KUBE_SUBCMD=$(echo "$MATCH_CMD" | sed -E \
-    -e 's/^kubectl[[:space:]]+//' \
-    -e 's/(--context|--kubeconfig|--namespace|-n)[[:space:]]+[^[:space:]]+[[:space:]]*//g' \
-    -e 's/--[a-z-]+=[^[:space:]]+[[:space:]]*//g' \
-    -e 's/^[[:space:]]+//')
-  case "$KUBE_SUBCMD" in
-    get|get\ *|logs|logs\ *|describe|describe\ *|apply|apply\ *|delete|delete\ *)
-      REWRITTEN="${ENV_PREFIX}${SUDO_PREFIX}ctk ${CMD_BODY}"
-      ;;
-  esac
-
 # --- Git commands ---
 elif echo "$MATCH_CMD" | grep -qE '^git[[:space:]]'; then
   GIT_SUBCMD=$(echo "$MATCH_CMD" | sed -E \
@@ -180,25 +167,6 @@ elif echo "$MATCH_CMD" | grep -qE '^pip[[:space:]]+(list|outdated|install|show)(
   REWRITTEN="${ENV_PREFIX}${SUDO_PREFIX}ctk ${CMD_BODY}"
 elif echo "$MATCH_CMD" | grep -qE '^uv[[:space:]]+pip[[:space:]]+(list|outdated|install|show)([[:space:]]|$)'; then
   REWRITTEN="${ENV_PREFIX}${SUDO_PREFIX}$(echo "$CMD_BODY" | sed 's/^uv pip /ctk pip /')"
-
-# --- Cargo ---
-elif echo "$MATCH_CMD" | grep -qE '^cargo[[:space:]]'; then
-  CARGO_SUBCMD=$(echo "$MATCH_CMD" | sed -E 's/^cargo[[:space:]]+(\+[^[:space:]]+[[:space:]]+)?//')
-  case "$CARGO_SUBCMD" in
-    test|test\ *|build|build\ *|clippy|clippy\ *|check|check\ *|install|install\ *|fmt|fmt\ *)
-      REWRITTEN="${ENV_PREFIX}${SUDO_PREFIX}ctk ${CMD_BODY}"
-      ;;
-  esac
-
-# --- Go tooling ---
-elif echo "$MATCH_CMD" | grep -qE '^go[[:space:]]+test([[:space:]]|$)'; then
-  REWRITTEN="${ENV_PREFIX}${SUDO_PREFIX}ctk ${CMD_BODY}"
-elif echo "$MATCH_CMD" | grep -qE '^go[[:space:]]+build([[:space:]]|$)'; then
-  REWRITTEN="${ENV_PREFIX}${SUDO_PREFIX}ctk ${CMD_BODY}"
-elif echo "$MATCH_CMD" | grep -qE '^go[[:space:]]+vet([[:space:]]|$)'; then
-  REWRITTEN="${ENV_PREFIX}${SUDO_PREFIX}ctk ${CMD_BODY}"
-elif echo "$MATCH_CMD" | grep -qE '^golangci-lint([[:space:]]|$)'; then
-  REWRITTEN="${ENV_PREFIX}${SUDO_PREFIX}ctk ${CMD_BODY}"
 
 # --- Network ---
 elif echo "$MATCH_CMD" | grep -qE '^curl[[:space:]]+'; then

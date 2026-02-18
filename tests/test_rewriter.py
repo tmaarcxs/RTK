@@ -4,10 +4,8 @@
 from ctk.core.rewriter import (
     COMMAND_CATEGORIES,
     RewriteResult,
-    _extract_cargo_subcommand,
     _extract_docker_subcommand,
     _extract_git_subcommand,
-    _extract_kubectl_subcommand,
     _extract_simple_subcommand,
     _extract_subcommand_generic,
     extract_prefix,
@@ -125,37 +123,6 @@ class TestDockerSubcommand:
         assert _extract_docker_subcommand("docker --context prod ps") == "ps"
 
 
-class TestKubectlSubcommand:
-    """Tests for kubectl subcommand extraction."""
-
-    def test_basic_kubectl(self):
-        """Should extract basic kubectl subcommand."""
-        assert _extract_kubectl_subcommand("kubectl get pods") == "get"
-        assert _extract_kubectl_subcommand("kubectl logs pod") == "logs"
-
-    def test_kubectl_with_namespace(self):
-        """Should strip -n namespace flag."""
-        assert _extract_kubectl_subcommand("kubectl -n default get pods") == "get"
-
-    def test_kubectl_with_context(self):
-        """Should strip --context flag."""
-        assert _extract_kubectl_subcommand("kubectl --context prod get pods") == "get"
-
-
-class TestCargoSubcommand:
-    """Tests for cargo subcommand extraction."""
-
-    def test_basic_cargo(self):
-        """Should extract basic cargo subcommand."""
-        assert _extract_cargo_subcommand("cargo build") == "build"
-        assert _extract_cargo_subcommand("cargo test") == "test"
-
-    def test_cargo_with_toolchain(self):
-        """Should handle +toolchain prefix."""
-        assert _extract_cargo_subcommand("cargo +nightly build") == "build"
-        assert _extract_cargo_subcommand("cargo +stable test") == "test"
-
-
 class TestSimpleSubcommand:
     """Tests for simple subcommand extraction."""
 
@@ -249,29 +216,11 @@ class TestShouldRewriteCommand:
         assert result.should_rewrite is True
         assert result.category == "nodejs"
 
-    def test_cargo_command(self):
-        """cargo test should be rewritten."""
-        result = should_rewrite_command("cargo test")
-        assert result.should_rewrite is True
-        assert result.category == "rust"
-
-    def test_go_command(self):
-        """go test should be rewritten."""
-        result = should_rewrite_command("go test ./...")
-        assert result.should_rewrite is True
-        assert result.category == "go"
-
     def test_curl_command(self):
         """curl should be rewritten."""
         result = should_rewrite_command("curl http://example.com")
         assert result.should_rewrite is True
         assert result.category == "network"
-
-    def test_kubectl_command(self):
-        """kubectl get should be rewritten."""
-        result = should_rewrite_command("kubectl get pods")
-        assert result.should_rewrite is True
-        assert result.category == "kubectl"
 
     def test_gh_command(self):
         """gh pr should be rewritten."""
@@ -325,7 +274,7 @@ class TestCommandCategories:
 
     def test_categories_exist(self):
         """All expected categories should be registered."""
-        expected = {"docker", "git", "gh", "kubectl", "files", "system", "python", "nodejs", "rust", "go", "network"}
+        expected = {"docker", "git", "gh", "files", "system", "python", "nodejs", "network"}
         assert expected <= set(COMMAND_CATEGORIES.keys())
 
     def test_category_has_patterns(self):

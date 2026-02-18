@@ -3,6 +3,9 @@
 import re
 from difflib import SequenceMatcher
 
+from ctk.utils.patterns import compress_patterns, matches_expected_format
+from ctk.utils.symbols import has_errors
+
 
 def preprocess_output(output: str) -> str:
     """Preprocess output to remove ANSI codes and normalize whitespace.
@@ -536,12 +539,6 @@ CATEGORY_PATTERNS = {
         r"^\s*PASSED\s*\[",
         r"^\s*passed\s*$",
     ],
-    "rust": [
-        r"^\s*Compiling",
-        r"^\s*Finished",
-        r"^\s*Running\b",
-        r"^\s*Downloading",
-    ],
     "git": [
         r"^\s*$",
         r"^\s*On branch",
@@ -556,8 +553,9 @@ def filter_output(output: str, category: str) -> str:
     Processing pipeline:
     1. Preprocess: Strip ANSI codes, normalize whitespace
     2. Filter: Remove boilerplate lines based on category
-    3. Deduplicate: Compress similar consecutive lines
-    4. Postprocess: Category-specific compacting
+    3. Symbolize & Pattern Compress: Apply symbol substitution and pattern compression
+    4. Deduplicate: Compress similar consecutive lines
+    5. Postprocess: Category-specific compacting (fallback)
     """
     if not output:
         return output
@@ -566,9 +564,14 @@ def filter_output(output: str, category: str) -> str:
     output = preprocess_output(output)
 
     lines = output.split("\n")
+
+    # Safety: Check for errors - if found, use light filtering only
+    if has_errors(lines):
+        return light_filter(lines, category)
+
     filtered_lines = []
 
-    # Combine patterns
+    # Combine patterns for Phase 2
     patterns = SKIP_PATTERNS + CATEGORY_PATTERNS.get(category, [])
 
     # For git category, don't use git_sensitive_patterns (we need to compact those lines)
@@ -584,15 +587,45 @@ def filter_output(output: str, category: str) -> str:
         if not skip:
             filtered_lines.append(line)
 
-    # Phase 3: Deduplicate similar lines
+    # Phase 3: Symbolize & Pattern Compress (for supported categories)
+    if category in ("git", "docker", "python", "nodejs", "files", "network"):
+        if matches_expected_format(filtered_lines, category):
+            compressed = compress_patterns(filtered_lines, category)
+            # Verify we got meaningful output
+            if compressed:
+                result = '\n'.join(compressed)
+                result = collapse_empty_lines(result.split('\n'))
+                return result
+
+    # Phase 4: Deduplicate similar lines (fallback path)
     filtered_lines = deduplicate_similar_lines(filtered_lines)
 
     result = '\n'.join(filtered_lines)
 
-    # Phase 4: Postprocess
+    # Phase 5: Postprocess (fallback)
     result = postprocess_output(result, category)
 
     # Final cleanup
     result = collapse_empty_lines(result.split('\n'))
 
     return result
+
+
+def light_filter(lines: list[str], _category: str) -> str:
+    """Light filtering for error output - preserves all error information.
+
+    Args:
+        lines: Output lines to filter
+        _category: Command category (unused, kept for API consistency)
+
+    Returns:
+        Lightly filtered output string
+    """
+    result = []
+
+    for line in lines:
+        line_stripped = line.rstrip()
+        if line_stripped:
+            result.append(line_stripped)
+
+    return '\n'.join(result)

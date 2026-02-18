@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-02-18
+
+### Added
+
+- **Aggressive symbol + pattern compression** for 70-85% token savings
+  - New `ctk/utils/symbols.py` module with symbol dictionaries
+  - New `ctk/utils/patterns.py` module with pattern compression
+  - Git status: Groups files by status (`M:file1.ts,file2.ts`)
+  - Docker: Compact container format (`abc1234 nginx U2h 80 web`)
+  - Pytest: Failures only with summary (`48p 2f | 3.42s`)
+  - NodeJS: Symbol format (`+25 -3 ~12 | 5.2s`)
+  - Files: Compact ls/grep/find output
+  - Network: Compact curl/wget output with status codes
+
+- **Error preservation**: Errors are now kept verbatim, not compressed
+- **Graceful degradation**: Falls back to basic filtering for unrecognized formats
+- **273 tests** for all compression functions
+
+### Removed
+
+- **Go, Rust, Kubernetes support** - Removed kubectl, cargo, go commands
+  - Low usage categories, focusing on core dev tools
+  - Updated all documentation and plugin descriptions
+
 ## [1.1.2] - 2026-02-18
 
 ### Fixed

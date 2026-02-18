@@ -82,23 +82,6 @@ def _extract_docker_subcommand(cmd: str) -> str | None:
     )
 
 
-def _extract_kubectl_subcommand(cmd: str) -> str | None:
-    """Extract kubectl subcommand."""
-    return _extract_subcommand_generic(
-        cmd,
-        "kubectl",
-        [r"(--context|--kubeconfig|--namespace|-n)\s+[^\s]+\s*", r"--[a-z-]+=[^\s]+\s*"],
-    )
-
-
-def _extract_cargo_subcommand(cmd: str) -> str | None:
-    """Extract cargo subcommand, handling +toolchain prefix."""
-    cmd = re.sub(r"^cargo\s+(\+[^\s]+\s+)?", "", cmd)
-    cmd = cmd.strip()
-    parts = cmd.split()
-    return parts[0] if parts else None
-
-
 def _extract_simple_subcommand(cmd: str) -> str | None:
     """Extract subcommand for tools like gh (second word)."""
     parts = cmd.split()
@@ -179,13 +162,6 @@ _register_category(
 )
 
 _register_category(
-    "kubectl",
-    [(r"^kubectl\s+", "kubectl")],
-    subcommands=["get", "logs", "describe", "apply", "delete", "create"],
-    extractor=_extract_kubectl_subcommand,
-)
-
-_register_category(
     "files",
     [
         (r"^ls(\s|$)", "ls"),
@@ -248,23 +224,6 @@ _register_category(
         (r"^(npx\s+)?prettier", "prettier"),
         (r"^(npx\s+)?playwright", "playwright"),
         (r"^(npx\s+)?prisma", "prisma"),
-    ],
-)
-
-_register_category(
-    "rust",
-    [(r"^cargo\s+", "cargo")],
-    subcommands=["test", "build", "clippy", "check", "install", "fmt"],
-    extractor=_extract_cargo_subcommand,
-)
-
-_register_category(
-    "go",
-    [
-        (r"^go\s+test", "go test"),
-        (r"^go\s+build", "go build"),
-        (r"^go\s+vet", "go vet"),
-        (r"^golangci-lint", "golangci-lint"),
     ],
 )
 

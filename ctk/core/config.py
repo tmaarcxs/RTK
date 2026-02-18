@@ -15,11 +15,8 @@ DEFAULT_CONFIG = {
         "git": {"enabled": True, "status": True, "diff": True, "log": True},
         "system": {"enabled": True, "ps": True, "free": True, "date": True, "whoami": True},
         "files": {"enabled": True, "ls": True, "tree": True, "grep": True, "find": True},
-        "kubernetes": {"enabled": True, "get": True, "logs": True, "describe": True},
         "python": {"enabled": True, "pytest": True, "ruff": True, "pip": True},
         "nodejs": {"enabled": True, "npm": True, "pnpm": True, "vitest": True, "tsc": True},
-        "rust": {"enabled": True, "cargo": True},
-        "go": {"enabled": True, "test": True, "build": True},
     },
     "display": {
         "color": True,
