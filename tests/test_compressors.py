@@ -37,6 +37,25 @@ class TestGitLogCompressor:
         result = compress_git_log(lines)
         assert len(result) <= 50
 
+    def test_strips_author_email(self):
+        """Should strip author email from commit line."""
+        lines = ["abc1234567 Author Name <email@example.com> Commit message"]
+        result = compress_git_log(lines)
+        assert "<email@example.com>" not in result[0]
+        assert "Commit message" in result[0]
+
+    def test_strips_date_prefix(self):
+        """Should strip Date: prefix from commit line."""
+        lines = ["abc1234567 Date: 2024-01-15 Commit message"]
+        result = compress_git_log(lines)
+        assert "Date:" not in result[0]
+        assert "Commit message" in result[0]
+
+    def test_empty_input(self):
+        """Should return empty list for empty input."""
+        result = compress_git_log([])
+        assert result == []
+
 
 class TestAlembicCompressor:
     """Tests for alembic migration output compression."""
@@ -53,6 +72,25 @@ class TestAlembicCompressor:
         assert any("1a2b3c4d -> 5e6f7g8h" in line or "->" in line for line in result)
         # Should contain the message
         assert any("add_users_table" in line for line in result)
+
+    def test_downgrade_output(self):
+        """Should handle downgrade operations."""
+        lines = [
+            "INFO  [alembic.runtime.migration] Running downgrade 5e6f7890 -> 1a2b3c4d, remove column"
+        ]
+        result = compress_alembic_output(lines)
+        assert any("->" in line for line in result)
+
+    def test_empty_input(self):
+        """Should return 'alembic: completed' for empty input."""
+        result = compress_alembic_output([])
+        assert result == ["alembic: completed"]
+
+    def test_preserves_errors(self):
+        """Should keep error lines."""
+        lines = ["Error: migration failed"]
+        result = compress_alembic_output(lines)
+        assert "Error: migration failed" in result
 
 
 class TestVitestCompressor:
@@ -91,6 +129,30 @@ class TestVitestCompressor:
         assert any("FAIL" in line for line in result)
         # Should include the failing file
         assert any("api.test.ts" in line for line in result)
+
+    def test_empty_input(self):
+        """Should return 'vitest: passed' for empty input."""
+        result = compress_vitest_output([])
+        assert result == ["vitest: passed"]
+
+    def test_limits_failures_to_ten(self):
+        """Should limit failures output to 10 entries."""
+        lines = [f"✘ src/test{i}.test.ts (1)" for i in range(20)]
+        lines.append("Test Files  0 passed, 20 failed (20)")
+        result = compress_vitest_output(lines)
+        fail_lines = [line for line in result if line.startswith("FAIL:")]
+        assert len(fail_lines) <= 10
+
+    def test_duration_with_milliseconds(self):
+        """Should handle duration in milliseconds."""
+        lines = [
+            "✓ src/utils.test.ts (5)",
+            "Test Files  1 passed (1)",
+            "Tests  5 passed (5)",
+            "Duration  123.45ms",
+        ]
+        result = compress_vitest_output(lines)
+        assert any("123.45ms" in line for line in result)
 
 
 class TestNestedCategoryDetection:
