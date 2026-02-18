@@ -349,3 +349,152 @@ class TestNetworkCommands:
         assert mock_run.called
 
 
+class TestFlagPassthrough:
+    """Tests for flag passthrough in various commands."""
+
+    @pytest.fixture
+    def runner(self):
+        """Create a CLI runner."""
+        return CliRunner()
+
+    @patch("ctk.cli._run_command")
+    def test_docker_compose_exec_with_t_flag(self, mock_run, runner):
+        """Should pass -T flag to docker compose exec."""
+        _result = runner.invoke(cli, ["docker", "compose", "exec", "-T", "backend", "python", "test.py"])
+        assert mock_run.called
+        # Verify the command includes the -T flag
+        call_args = mock_run.call_args[0][0]
+        assert "-T" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_docker_exec_with_it_flags(self, mock_run, runner):
+        """Should pass -it flags to docker exec."""
+        _result = runner.invoke(cli, ["docker", "exec", "-it", "container", "bash"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-it" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_curl_with_multiple_flags(self, mock_run, runner):
+        """Should pass multiple flags to curl."""
+        _result = runner.invoke(cli, ["curl", "-s", "-X", "GET", "http://example.com"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-s" in call_args
+        assert "-X" in call_args
+        assert "GET" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_git_status_with_flags(self, mock_run, runner):
+        """Should pass flags to git status."""
+        _result = runner.invoke(cli, ["git", "status", "--short", "--branch"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "--short" in call_args
+        assert "--branch" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_grep_with_rn_flags(self, mock_run, runner):
+        """Should pass -r -n flags to grep."""
+        _result = runner.invoke(cli, ["grep", "-r", "-n", "pattern", "."])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-r" in call_args
+        assert "-n" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_npm_with_save_dev_flag(self, mock_run, runner):
+        """Should pass --save-dev flag to npm."""
+        _result = runner.invoke(cli, ["npm", "install", "--save-dev", "package"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "--save-dev" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_pytest_with_xv_flags(self, mock_run, runner):
+        """Should pass -x -v flags to pytest."""
+        _result = runner.invoke(cli, ["pytest", "-x", "-v", "tests/"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-x" in call_args
+        assert "-v" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_docker_compose_up_with_d_flag(self, mock_run, runner):
+        """Should pass -d flag to docker compose up."""
+        _result = runner.invoke(cli, ["docker", "compose", "up", "-d"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-d" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_docker_compose_logs_with_f_flag(self, mock_run, runner):
+        """Should pass -f flag to docker compose logs."""
+        _result = runner.invoke(cli, ["docker", "compose", "logs", "-f", "backend"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-f" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_docker_ps_with_a_flag(self, mock_run, runner):
+        """Should pass -a flag to docker ps."""
+        _result = runner.invoke(cli, ["docker", "ps", "-a"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-a" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_pip_install_with_e_flag(self, mock_run, runner):
+        """Should pass -e flag to pip install."""
+        _result = runner.invoke(cli, ["pip", "install", "-e", "."])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-e" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_find_with_type_flag(self, mock_run, runner):
+        """Should pass -type flag to find."""
+        _result = runner.invoke(cli, ["find", ".", "-type", "f", "-name", "*.py"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-type" in call_args
+        assert "f" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_sed_with_i_flag(self, mock_run, runner):
+        """Should pass -i flag to sed."""
+        _result = runner.invoke(cli, ["sed", "-i", "s/old/new/g", "file.txt"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-i" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_jq_with_r_flag(self, mock_run, runner):
+        """Should pass -r flag to jq."""
+        _result = runner.invoke(cli, ["jq", "-r", ".name", "data.json"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-r" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_apt_with_y_flag(self, mock_run, runner):
+        """Should pass -y flag to apt."""
+        _result = runner.invoke(cli, ["apt", "install", "-y", "package"])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-y" in call_args
+
+    @patch("ctk.cli._run_command")
+    def test_docker_compose_exec_complex_command(self, mock_run, runner):
+        """Should pass complex command with multiple flags."""
+        _result = runner.invoke(cli, [
+            "docker", "compose", "exec", "-T", "-e", "VAR=value",
+            "backend", "python", "-m", "pytest", "-xvs", "tests/"
+        ])
+        assert mock_run.called
+        call_args = mock_run.call_args[0][0]
+        assert "-T" in call_args
+        assert "-e" in call_args
+        assert "VAR=value" in call_args
+
+

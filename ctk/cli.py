@@ -350,42 +350,42 @@ def docker():
     pass
 
 
-@docker.command("ps")
+@docker.command("ps", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def docker_ps(args: tuple[str, ...]):
     """Compact container listing."""
     _run_command("docker ps " + " ".join(args), "docker")
 
 
-@docker.command("images")
+@docker.command("images", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def docker_images(args: tuple[str, ...]):
     """Compact image listing."""
     _run_command("docker images " + " ".join(args), "docker")
 
 
-@docker.command("logs")
+@docker.command("logs", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def docker_logs(args: tuple[str, ...]):
     """Deduplicated log output."""
     _run_command("docker logs " + " ".join(args), "docker")
 
 
-@docker.command("exec")
+@docker.command("exec", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def docker_exec(args: tuple[str, ...]):
     """Execute command in container."""
     _run_command("docker exec " + " ".join(args), "docker")
 
 
-@docker.command("run")
+@docker.command("run", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def docker_run(args: tuple[str, ...]):
     """Run container with compact output."""
     _run_command("docker run " + " ".join(args), "docker")
 
 
-@docker.command("build")
+@docker.command("build", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def docker_build(args: tuple[str, ...]):
     """Build image with compact output."""
@@ -442,49 +442,49 @@ def git():
     pass
 
 
-@git.command("status")
+@git.command("status", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_status(args: tuple[str, ...]):
     """Compact status output."""
     _run_command("git status " + " ".join(args), "git")
 
 
-@git.command("diff")
+@git.command("diff", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_diff(args: tuple[str, ...]):
     """Ultra-condensed diff."""
     _run_command("git diff " + " ".join(args), "git")
 
 
-@git.command("log")
+@git.command("log", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_log(args: tuple[str, ...]):
     """Compact log output."""
     _run_command("git log --oneline " + " ".join(args), "git")
 
 
-@git.command("add")
+@git.command("add", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_add(args: tuple[str, ...]):
     """Stage files."""
     _run_command("git add " + " ".join(args), "git")
 
 
-@git.command("commit")
+@git.command("commit", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_commit(args: tuple[str, ...]):
     """Commit changes."""
     _run_command("git commit " + " ".join(args), "git")
 
 
-@git.command("push")
+@git.command("push", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_push(args: tuple[str, ...]):
     """Push changes."""
     _run_command("git push " + " ".join(args), "git")
 
 
-@git.command("pull")
+@git.command("pull", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_pull(args: tuple[str, ...]):
     """Pull changes."""
@@ -860,21 +860,21 @@ def cat_command(file: str, max_lines: int):
 
 # ==================== Extended Docker Commands ====================
 
-@docker.command("network")
+@docker.command("network", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def docker_network(args: tuple[str, ...]):
     """Docker network commands."""
     _run_command("docker network " + " ".join(args), "docker")
 
 
-@docker.command("volume")
+@docker.command("volume", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def docker_volume(args: tuple[str, ...]):
     """Docker volume commands."""
     _run_command("docker volume " + " ".join(args), "docker")
 
 
-@docker.command("system")
+@docker.command("system", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def docker_system(args: tuple[str, ...]):
     """Docker system commands."""
@@ -883,28 +883,28 @@ def docker_system(args: tuple[str, ...]):
 
 # ==================== Extended Git Commands ====================
 
-@git.command("branch")
+@git.command("branch", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_branch(args: tuple[str, ...]):
     """List branches."""
     _run_command("git branch -a " + " ".join(args), "git")
 
 
-@git.command("remote")
+@git.command("remote", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_remote(args: tuple[str, ...]):
     """Remote info."""
     _run_command("git remote -v " + " ".join(args), "git")
 
 
-@git.command("stash")
+@git.command("stash", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_stash(args: tuple[str, ...]):
     """Stash operations."""
     _run_command("git stash list " + " ".join(args), "git")
 
 
-@git.command("tag")
+@git.command("tag", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def git_tag(args: tuple[str, ...]):
     """Tag list."""
