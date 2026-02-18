@@ -489,21 +489,21 @@ def git_pull(args: tuple[str, ...]):
 
 # ==================== System Commands ====================
 
-@cli.command("ps")
+@cli.command("ps", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def ps_command(args: tuple[str, ...]):
     """Top processes by CPU/memory."""
     _run_command("ps aux --sort=-%mem | head -20", "system")
 
 
-@cli.command("free")
+@cli.command("free", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def free_command(args: tuple[str, ...]):
     """Single line memory summary."""
     _run_command("free -h", "system")
 
 
-@cli.command("date")
+@cli.command("date", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def date_command(args: tuple[str, ...]):
     """Compact date output."""
@@ -518,7 +518,7 @@ def whoami_command():
 
 # ==================== File Commands ====================
 
-@cli.command("ls")
+@cli.command("ls", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def ls_command(args: tuple[str, ...]):
     """Compact directory listing."""
@@ -526,7 +526,7 @@ def ls_command(args: tuple[str, ...]):
     _run_command(f"ls {args_str}", "files")
 
 
-@cli.command("tree")
+@cli.command("tree", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def tree_command(args: tuple[str, ...]):
     """Compact tree output."""
@@ -541,21 +541,21 @@ def read_command(file: str, max_lines: int):
     _run_command(f"head -{max_lines} {file}", "files")
 
 
-@cli.command("grep")
+@cli.command("grep", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def grep_command(args: tuple[str, ...]):
     """Compact grep output."""
     _run_command("grep " + " ".join(args), "files")
 
 
-@cli.command("find")
+@cli.command("find", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def find_command(args: tuple[str, ...]):
     """Compact find output."""
     _run_command("find " + " ".join(args), "files")
 
 
-@cli.command("du")
+@cli.command("du", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def du_command(args: tuple[str, ...]):
     """Disk usage summary."""
@@ -565,7 +565,7 @@ def du_command(args: tuple[str, ...]):
 
 # ==================== Python Commands ====================
 
-@cli.command("pytest")
+@cli.command("pytest", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def pytest_command(args: tuple[str, ...]):
     """Pytest with compact output."""
@@ -573,14 +573,14 @@ def pytest_command(args: tuple[str, ...]):
     _run_command(f"pytest {args_str} -q --tb=short 2>&1", "python")
 
 
-@cli.command("ruff")
+@cli.command("ruff", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def ruff_command(args: tuple[str, ...]):
     """Ruff with compact output."""
     _run_command("ruff " + " ".join(args), "python")
 
 
-@cli.command("pip")
+@cli.command("pip", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def pip_command(args: tuple[str, ...]):
     """Pip with compact output."""
@@ -589,75 +589,46 @@ def pip_command(args: tuple[str, ...]):
 
 # ==================== Node.js Commands ====================
 
-@cli.command("npm")
+@cli.command("npm", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def npm_command(args: tuple[str, ...]):
     """npm with filtered output."""
     _run_command("npm " + " ".join(args), "nodejs")
 
 
-@cli.command("pnpm")
+@cli.command("pnpm", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def pnpm_command(args: tuple[str, ...]):
     """pnpm with compact output."""
     _run_command("pnpm " + " ".join(args), "nodejs")
 
 
-@cli.command("vitest")
+@cli.command("vitest", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def vitest_command(args: tuple[str, ...]):
     """Vitest with compact output."""
     _run_command("npx vitest run --reporter=verbose 2>&1", "nodejs")
 
 
-@cli.command("tsc")
+@cli.command("tsc", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def tsc_command(args: tuple[str, ...]):
     """TypeScript compiler with grouped errors."""
     _run_command("npx tsc --pretty 2>&1", "nodejs")
 
 
-@cli.command("lint")
+@cli.command("lint", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def lint_command(args: tuple[str, ...]):
     """ESLint with grouped violations."""
     _run_command("npx eslint --format compact 2>&1", "nodejs")
 
 
-@cli.command("prettier")
+@cli.command("prettier", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def prettier_command(args: tuple[str, ...]):
     """Prettier with compact output."""
     _run_command("npx prettier " + " ".join(args), "nodejs")
-
-
-# ==================== Kubernetes Commands ====================
-
-@cli.group(context_settings=CONTEXT_SETTINGS)
-def kubectl():
-    """Kubectl commands with compact output."""
-    pass
-
-
-@kubectl.command("get")
-@click.argument("args", nargs=-1)
-def kubectl_get(args: tuple[str, ...]):
-    """Get resources."""
-    _run_command("kubectl get " + " ".join(args), "kubernetes")
-
-
-@kubectl.command("logs")
-@click.argument("args", nargs=-1)
-def kubectl_logs(args: tuple[str, ...]):
-    """Pod logs."""
-    _run_command("kubectl logs " + " ".join(args), "kubernetes")
-
-
-@kubectl.command("describe")
-@click.argument("args", nargs=-1)
-def kubectl_describe(args: tuple[str, ...]):
-    """Describe resource."""
-    _run_command("kubectl describe " + " ".join(args), "kubernetes")
 
 
 # ==================== Utility Functions ====================
@@ -764,35 +735,21 @@ _filter_output = filter_output
 
 # ==================== Additional Commands ====================
 
-@cli.command("gh")
+@cli.command("gh", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def gh_command(args: tuple[str, ...]):
     """GitHub CLI with compact output."""
     _run_command("gh " + " ".join(args), "gh")
 
 
-@cli.command("cargo")
-@click.argument("args", nargs=-1)
-def cargo_command(args: tuple[str, ...]):
-    """Cargo with compact output."""
-    _run_command("cargo " + " ".join(args), "rust")
-
-
-@cli.command("go")
-@click.argument("args", nargs=-1)
-def go_command(args: tuple[str, ...]):
-    """Go commands with compact output."""
-    _run_command("go " + " ".join(args), "go")
-
-
-@cli.command("curl")
+@cli.command("curl", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def curl_command(args: tuple[str, ...]):
     """Curl with auto-JSON detection."""
     _run_command("curl -s " + " ".join(args), "network")
 
 
-@cli.command("wget")
+@cli.command("wget", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def wget_command(args: tuple[str, ...]):
     """Wget with compact output."""
@@ -801,14 +758,14 @@ def wget_command(args: tuple[str, ...]):
 
 # ==================== Extended System Commands ====================
 
-@cli.command("df")
+@cli.command("df", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def df_command(args: tuple[str, ...]):
     """Disk space summary."""
     _run_command("df -h " + " ".join(args), "system")
 
 
-@cli.command("uname")
+@cli.command("uname", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def uname_command(args: tuple[str, ...]):
     """System info."""
@@ -827,7 +784,7 @@ def uptime_command():
     _run_command("uptime", "system")
 
 
-@cli.command("env")
+@cli.command("env", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def env_command(args: tuple[str, ...]):
     """Environment variables (filtered)."""
@@ -837,14 +794,14 @@ def env_command(args: tuple[str, ...]):
         _run_command("env | head -30", "system")
 
 
-@cli.command("which")
+@cli.command("which", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def which_command(args: tuple[str, ...]):
     """Find command location."""
     _run_command("which " + " ".join(args), "system")
 
 
-@cli.command("history")
+@cli.command("history", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def history_command(args: tuple[str, ...]):
     """Command history (limited)."""
@@ -868,21 +825,21 @@ def tail_command(file: str, lines: int):
     _run_command(f"tail -{lines} {file}", "files")
 
 
-@cli.command("wc")
+@cli.command("wc", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def wc_command(args: tuple[str, ...]):
     """Word/line count."""
     _run_command("wc " + " ".join(args), "files")
 
 
-@cli.command("stat")
+@cli.command("stat", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def stat_command(args: tuple[str, ...]):
     """File status."""
     _run_command("stat " + " ".join(args), "files")
 
 
-@cli.command("file")
+@cli.command("file", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def file_command(args: tuple[str, ...]):
     """File type."""
@@ -952,14 +909,14 @@ def git_tag(args: tuple[str, ...]):
 
 # ==================== Network Commands ====================
 
-@cli.command("ip")
+@cli.command("ip", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def ip_command(args: tuple[str, ...]):
     """IP/network info."""
     _run_command("ip " + " ".join(args), "network")
 
 
-@cli.command("ss")
+@cli.command("ss", context_settings=CONTEXT_SETTINGS)
 @click.argument("args", nargs=-1)
 def ss_command(args: tuple[str, ...]):
     """Socket stats."""

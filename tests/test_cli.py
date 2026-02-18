@@ -207,12 +207,6 @@ class TestCommandGroups:
         assert result.exit_code == 0
         assert "git" in result.output.lower()
 
-    def test_kubectl_group_help(self, runner):
-        """Should show kubectl group help."""
-        result = runner.invoke(cli, ["kubectl", "--help"])
-        assert result.exit_code == 0
-        assert "kubectl" in result.output.lower()
-
 
 class TestFileCommands:
     """Tests for file-related commands."""
