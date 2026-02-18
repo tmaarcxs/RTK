@@ -26,7 +26,11 @@ CONTEXT_SETTINGS = {
 }
 
 # Command registry - single source of truth for proxy commands
-# Format: (group, command): (cmd_template, category)
+# Format: (group_path, command): (cmd_template, category)
+# group_path can be:
+#   - "" for top-level commands
+#   - "group" for single-level groups (e.g., "git")
+#   - "parent.child" for nested groups (e.g., "docker.compose")
 COMMAND_REGISTRY = {
     # Docker commands
     ("docker", "ps"): ("docker ps ", "docker"),
@@ -38,12 +42,12 @@ COMMAND_REGISTRY = {
     ("docker", "network"): ("docker network ", "docker"),
     ("docker", "volume"): ("docker volume ", "docker"),
     ("docker", "system"): ("docker system ", "docker"),
-    # Docker Compose commands
-    ("docker-compose", "ps"): ("docker compose ps ", "docker-compose"),
-    ("docker-compose", "logs"): ("docker compose logs ", "docker-compose"),
-    ("docker-compose", "up"): ("docker compose up ", "docker-compose"),
-    ("docker-compose", "down"): ("docker compose down ", "docker-compose"),
-    ("docker-compose", "exec"): ("docker compose exec ", "docker-compose"),
+    # Docker Compose commands (nested under docker)
+    ("docker.compose", "ps"): ("docker compose ps ", "docker-compose"),
+    ("docker.compose", "logs"): ("docker compose logs ", "docker-compose"),
+    ("docker.compose", "up"): ("docker compose up ", "docker-compose"),
+    ("docker.compose", "down"): ("docker compose down ", "docker-compose"),
+    ("docker.compose", "exec"): ("docker compose exec ", "docker-compose"),
     # Git commands
     ("git", "status"): ("git status ", "git"),
     ("git", "diff"): ("git diff ", "git"),
@@ -89,6 +93,7 @@ COMMAND_REGISTRY = {
     ("", "free"): ("free -h", "system"),
     ("", "df"): ("df -h ", "system"),
     ("", "uname"): ("uname -a", "system"),
+    ("", "date"): ("date '+%Y-%m-%d %H:%M:%S'", "system"),
     ("", "env"): ("env | head -30", "system"),
     ("", "which"): ("which ", "system"),
     ("", "id"): ("id", "system"),
@@ -107,6 +112,46 @@ def _make_proxy_handler(cmd_template: str, category: str):
         _run_command(cmd_template + " ".join(args), category)
 
     return handler
+
+
+def _register_proxy_commands():
+    """Register all proxy commands from the registry."""
+    groups: dict[str, click.Group] = {}
+
+    for (group_path, cmd_name), (cmd_template, category) in COMMAND_REGISTRY.items():
+        # Handle nested groups (e.g., "docker.compose" -> ["docker", "compose"])
+        group_parts = group_path.split(".") if group_path else []
+        parent_group = None
+
+        # Create group hierarchy if needed
+        for i, part in enumerate(group_parts):
+            full_path = ".".join(group_parts[: i + 1])
+            if full_path not in groups:
+                groups[full_path] = click.Group(
+                    name=part,
+                    context_settings=CONTEXT_SETTINGS,
+                )
+                # Add to parent group or CLI
+                if parent_group:
+                    parent_group.add_command(groups[full_path])
+                else:
+                    cli.add_command(groups[full_path], name=part)
+            parent_group = groups[full_path]
+
+        # Create command
+        handler = _make_proxy_handler(cmd_template, category)
+        handler = click.argument("args", nargs=-1)(handler)
+
+        cmd = click.command(
+            cmd_name,
+            context_settings=CONTEXT_SETTINGS,
+        )(handler)
+
+        # Add to group or CLI
+        if parent_group:
+            parent_group.add_command(cmd)
+        else:
+            cli.add_command(cmd)
 
 
 class ProxyVersionGroup(click.Group):
@@ -144,6 +189,10 @@ def cli(ctx: click.Context):
     """
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
+
+
+# Auto-register proxy commands from registry
+_register_proxy_commands()
 
 
 # ==================== Meta Commands ====================
@@ -464,305 +513,6 @@ def proxy_command(command: tuple[str, ...]):
     sys.exit(result.returncode)
 
 
-# ==================== Docker Commands ====================
-
-
-@cli.group(context_settings=CONTEXT_SETTINGS)
-def docker():
-    """Docker commands with compact output."""
-    pass
-
-
-@docker.command("ps", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def docker_ps(args: tuple[str, ...]):
-    """Compact container listing."""
-    _run_command("docker ps " + " ".join(args), "docker")
-
-
-@docker.command("images", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def docker_images(args: tuple[str, ...]):
-    """Compact image listing."""
-    _run_command("docker images " + " ".join(args), "docker")
-
-
-@docker.command("logs", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def docker_logs(args: tuple[str, ...]):
-    """Deduplicated log output."""
-    _run_command("docker logs " + " ".join(args), "docker")
-
-
-@docker.command("exec", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def docker_exec(args: tuple[str, ...]):
-    """Execute command in container."""
-    _run_command("docker exec " + " ".join(args), "docker")
-
-
-@docker.command("run", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def docker_run(args: tuple[str, ...]):
-    """Run container with compact output."""
-    _run_command("docker run " + " ".join(args), "docker")
-
-
-@docker.command("build", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def docker_build(args: tuple[str, ...]):
-    """Build image with compact output."""
-    _run_command("docker build " + " ".join(args), "docker")
-
-
-# Docker Compose group
-@docker.group("compose", context_settings=CONTEXT_SETTINGS)
-def docker_compose():
-    """Docker Compose commands."""
-    pass
-
-
-@docker_compose.command("ps", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def compose_ps(args: tuple[str, ...]):
-    """Compact compose container listing."""
-    _run_command("docker compose ps " + " ".join(args), "docker-compose")
-
-
-@docker_compose.command("logs", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def compose_logs(args: tuple[str, ...]):
-    """Deduplicated compose logs."""
-    _run_command("docker compose logs " + " ".join(args), "docker-compose")
-
-
-@docker_compose.command("up", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def compose_up(args: tuple[str, ...]):
-    """Start services with summary."""
-    _run_command("docker compose up " + " ".join(args), "docker-compose")
-
-
-@docker_compose.command("down", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def compose_down(args: tuple[str, ...]):
-    """Stop services with summary."""
-    _run_command("docker compose down " + " ".join(args), "docker-compose")
-
-
-@docker_compose.command("exec", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def compose_exec(args: tuple[str, ...]):
-    """Execute in compose service."""
-    _run_command("docker compose exec " + " ".join(args), "docker-compose")
-
-
-# ==================== Git Commands ====================
-
-
-@cli.group(context_settings=CONTEXT_SETTINGS)
-def git():
-    """Git commands with compact output."""
-    pass
-
-
-@git.command("status", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_status(args: tuple[str, ...]):
-    """Compact status output."""
-    _run_command("git status " + " ".join(args), "git")
-
-
-@git.command("diff", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_diff(args: tuple[str, ...]):
-    """Ultra-condensed diff."""
-    _run_command("git diff " + " ".join(args), "git")
-
-
-@git.command("log", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_log(args: tuple[str, ...]):
-    """Compact log output."""
-    _run_command("git log --oneline " + " ".join(args), "git")
-
-
-@git.command("add", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_add(args: tuple[str, ...]):
-    """Stage files."""
-    _run_command("git add " + " ".join(args), "git")
-
-
-@git.command("commit", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_commit(args: tuple[str, ...]):
-    """Commit changes."""
-    _run_command("git commit " + " ".join(args), "git")
-
-
-@git.command("push", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_push(args: tuple[str, ...]):
-    """Push changes."""
-    _run_command("git push " + " ".join(args), "git")
-
-
-@git.command("pull", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_pull(args: tuple[str, ...]):
-    """Pull changes."""
-    _run_command("git pull " + " ".join(args), "git")
-
-
-# ==================== System Commands ====================
-
-
-@cli.command("ps", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def ps_command(args: tuple[str, ...]):
-    """Top processes by CPU/memory."""
-    _run_command("ps aux --sort=-%mem | head -20", "system")
-
-
-@cli.command("free", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def free_command(args: tuple[str, ...]):
-    """Single line memory summary."""
-    _run_command("free -h", "system")
-
-
-@cli.command("date", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def date_command(args: tuple[str, ...]):
-    """Compact date output."""
-    _run_command("date '+%Y-%m-%d %H:%M:%S'", "system")
-
-
-@cli.command("whoami")
-def whoami_command():
-    """Current user."""
-    _run_command("whoami", "system")
-
-
-# ==================== File Commands ====================
-
-
-@cli.command("ls", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def ls_command(args: tuple[str, ...]):
-    """Compact directory listing."""
-    args_str = " ".join(args) if args else "-1"
-    _run_command(f"ls {args_str}", "files")
-
-
-@cli.command("tree", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def tree_command(args: tuple[str, ...]):
-    """Compact tree output."""
-    _run_command("tree " + " ".join(args), "files")
-
-
-@cli.command("read")
-@click.argument("file", type=click.Path(exists=True))
-@click.option("--max-lines", "-n", default=100, help="Maximum lines to show")
-def read_command(file: str, max_lines: int):
-    """Read file with filtering."""
-    _run_command(f"head -{max_lines} {file}", "files")
-
-
-@cli.command("grep", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def grep_command(args: tuple[str, ...]):
-    """Compact grep output."""
-    _run_command("grep " + " ".join(args), "files")
-
-
-@cli.command("find", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def find_command(args: tuple[str, ...]):
-    """Compact find output."""
-    _run_command("find " + " ".join(args), "files")
-
-
-@cli.command("du", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def du_command(args: tuple[str, ...]):
-    """Disk usage summary."""
-    args_str = " ".join(args) if args else "-sh ."
-    _run_command(f"du {args_str}", "files")
-
-
-# ==================== Python Commands ====================
-
-
-@cli.command("pytest", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def pytest_command(args: tuple[str, ...]):
-    """Pytest with compact output."""
-    args_str = " ".join(args) if args else ""
-    _run_command(f"pytest {args_str} -q --tb=short 2>&1", "python")
-
-
-@cli.command("ruff", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def ruff_command(args: tuple[str, ...]):
-    """Ruff with compact output."""
-    _run_command("ruff " + " ".join(args), "python")
-
-
-@cli.command("pip", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def pip_command(args: tuple[str, ...]):
-    """Pip with compact output."""
-    _run_command("pip " + " ".join(args), "python")
-
-
-# ==================== Node.js Commands ====================
-
-
-@cli.command("npm", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def npm_command(args: tuple[str, ...]):
-    """npm with filtered output."""
-    _run_command("npm " + " ".join(args), "nodejs")
-
-
-@cli.command("pnpm", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def pnpm_command(args: tuple[str, ...]):
-    """pnpm with compact output."""
-    _run_command("pnpm " + " ".join(args), "nodejs")
-
-
-@cli.command("vitest", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def vitest_command(args: tuple[str, ...]):
-    """Vitest with compact output."""
-    _run_command("npx vitest run --reporter=verbose 2>&1", "nodejs")
-
-
-@cli.command("tsc", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def tsc_command(args: tuple[str, ...]):
-    """TypeScript compiler with grouped errors."""
-    _run_command("npx tsc --pretty 2>&1", "nodejs")
-
-
-@cli.command("lint", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def lint_command(args: tuple[str, ...]):
-    """ESLint with grouped violations."""
-    _run_command("npx eslint --format compact 2>&1", "nodejs")
-
-
-@cli.command("prettier", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def prettier_command(args: tuple[str, ...]):
-    """Prettier with compact output."""
-    _run_command("npx prettier " + " ".join(args), "nodejs")
-
-
 # ==================== Utility Functions ====================
 
 
@@ -872,91 +622,15 @@ def _get_raw_command(ctk_cmd: str, category: str) -> str:
 _filter_output = filter_output
 
 
-# ==================== Additional Commands ====================
+# ==================== Custom Commands (with special options) ====================
 
 
-@cli.command("gh", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def gh_command(args: tuple[str, ...]):
-    """GitHub CLI with compact output."""
-    _run_command("gh " + " ".join(args), "gh")
-
-
-@cli.command("curl", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def curl_command(args: tuple[str, ...]):
-    """Curl with auto-JSON detection."""
-    _run_command("curl -s " + " ".join(args), "network")
-
-
-@cli.command("wget", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def wget_command(args: tuple[str, ...]):
-    """Wget with compact output."""
-    _run_command("wget -q " + " ".join(args), "network")
-
-
-# ==================== Extended System Commands ====================
-
-
-@cli.command("df", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def df_command(args: tuple[str, ...]):
-    """Disk space summary."""
-    _run_command("df -h " + " ".join(args), "system")
-
-
-@cli.command("uname", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def uname_command(args: tuple[str, ...]):
-    """System info."""
-    _run_command("uname -a", "system")
-
-
-@cli.command("hostname")
-def hostname_command():
-    """Hostname."""
-    _run_command("hostname", "system")
-
-
-@cli.command("uptime")
-def uptime_command():
-    """System uptime."""
-    _run_command("uptime", "system")
-
-
-@cli.command("env", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def env_command(args: tuple[str, ...]):
-    """Environment variables (filtered)."""
-    if args:
-        _run_command("env | grep -i " + " ".join(args), "system")
-    else:
-        _run_command("env | head -30", "system")
-
-
-@cli.command("which", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def which_command(args: tuple[str, ...]):
-    """Find command location."""
-    _run_command("which " + " ".join(args), "system")
-
-
-@cli.command("history", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def history_command(args: tuple[str, ...]):
-    """Command history (limited)."""
-    n = args[0] if args else "20"
-    _run_command(f"history {n} 2>/dev/null || fc -l -{n}", "system")
-
-
-@cli.command("id")
-def id_command():
-    """User/group IDs."""
-    _run_command("id", "system")
-
-
-# ==================== Extended File Commands ====================
+@cli.command("read")
+@click.argument("file", type=click.Path(exists=True))
+@click.option("--max-lines", "-n", default=100, help="Maximum lines to show")
+def read_command(file: str, max_lines: int):
+    """Read file with filtering."""
+    _run_command(f"head -{max_lines} {file}", "files")
 
 
 @cli.command("tail")
@@ -967,105 +641,12 @@ def tail_command(file: str, lines: int):
     _run_command(f"tail -{lines} {file}", "files")
 
 
-@cli.command("wc", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def wc_command(args: tuple[str, ...]):
-    """Word/line count."""
-    _run_command("wc " + " ".join(args), "files")
-
-
-@cli.command("stat", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def stat_command(args: tuple[str, ...]):
-    """File status."""
-    _run_command("stat " + " ".join(args), "files")
-
-
-@cli.command("file", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def file_command(args: tuple[str, ...]):
-    """File type."""
-    _run_command("file " + " ".join(args), "files")
-
-
 @cli.command("cat")
 @click.argument("file", type=click.Path(exists=True))
 @click.option("--max-lines", "-n", default=100, help="Maximum lines")
 def cat_command(file: str, max_lines: int):
     """Cat with line limit (alias for read)."""
     _run_command(f"head -{max_lines} {file}", "files")
-
-
-# ==================== Extended Docker Commands ====================
-
-
-@docker.command("network", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def docker_network(args: tuple[str, ...]):
-    """Docker network commands."""
-    _run_command("docker network " + " ".join(args), "docker")
-
-
-@docker.command("volume", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def docker_volume(args: tuple[str, ...]):
-    """Docker volume commands."""
-    _run_command("docker volume " + " ".join(args), "docker")
-
-
-@docker.command("system", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def docker_system(args: tuple[str, ...]):
-    """Docker system commands."""
-    _run_command("docker system " + " ".join(args), "docker")
-
-
-# ==================== Extended Git Commands ====================
-
-
-@git.command("branch", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_branch(args: tuple[str, ...]):
-    """List branches."""
-    _run_command("git branch -a " + " ".join(args), "git")
-
-
-@git.command("remote", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_remote(args: tuple[str, ...]):
-    """Remote info."""
-    _run_command("git remote -v " + " ".join(args), "git")
-
-
-@git.command("stash", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_stash(args: tuple[str, ...]):
-    """Stash operations."""
-    _run_command("git stash list " + " ".join(args), "git")
-
-
-@git.command("tag", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def git_tag(args: tuple[str, ...]):
-    """Tag list."""
-    _run_command("git tag " + " ".join(args), "git")
-
-
-# ==================== Network Commands ====================
-
-
-@cli.command("ip", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def ip_command(args: tuple[str, ...]):
-    """IP/network info."""
-    _run_command("ip " + " ".join(args), "network")
-
-
-@cli.command("ss", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def ss_command(args: tuple[str, ...]):
-    """Socket stats."""
-    _run_command("ss -tuln " + " ".join(args), "network")
 
 
 @cli.command("ping")
@@ -1076,44 +657,6 @@ def ping_command(host: str, count: int):
     _run_command(f"ping -c {count} {host} 2>&1 | tail -5", "network")
 
 
-# ==================== Utility Commands ====================
-
-
-@cli.command("pwd")
-def pwd_command():
-    """Print working directory."""
-    _run_command("pwd", "system")
-
-
-@cli.command("sed", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def sed_command(args: tuple[str, ...]):
-    """Stream editor."""
-    _run_command("sed " + " ".join(args), "files")
-
-
-@cli.command("jq", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def jq_command(args: tuple[str, ...]):
-    """JSON processor."""
-    _run_command("jq " + " ".join(args), "files")
-
-
-@cli.command("apt", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def apt_command(args: tuple[str, ...]):
-    """Package manager."""
-    _run_command("apt " + " ".join(args), "system")
-
-
-@cli.command("sqlite3", context_settings=CONTEXT_SETTINGS)
-@click.argument("args", nargs=-1)
-def sqlite3_command(args: tuple[str, ...]):
-    """SQLite database CLI."""
-    _run_command("sqlite3 " + " ".join(args), "system")
-
-
-# Config command
 @cli.command("config")
 @click.option("--show", is_flag=True, help="Show current configuration")
 @click.option("--init", is_flag=True, help="Initialize configuration file")
